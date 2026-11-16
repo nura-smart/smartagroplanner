@@ -1,0 +1,902 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SmartAgro Planner</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Atkinson+Hyperlegible:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  /* Ladang: hijau daun sebagai warna utama, emas padi sebagai aksen ukuran; susun atur kad borang → hasil */
+  --bg:#eff4ea;
+  --surface:#ffffff;
+  --surface-2:#f6f9f2;
+  --ink:#15241a;
+  --muted:#55665a;
+  --line:#d4dfcc;
+  --leaf:#2b7539;
+  --leaf-ink:#ffffff;
+  --leaf-deep:#1a4625;
+  --leaf-soft:#e0edd8;
+  --grain:#a87a14;
+  --grain-soft:#f5ead0;
+  --bad:#ad3f29;
+  --bad-soft:#f8e2dc;
+  --hero:#1a4625;
+  --hero-ink:#eef6ea;
+  --hero-muted:#b9d3b6;
+  --font-display:'Bricolage Grotesque', 'Segoe UI', system-ui, sans-serif;
+  --font-body:'Atkinson Hyperlegible', 'Segoe UI', system-ui, sans-serif;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0e1611; --surface:#16211a; --surface-2:#1b281f; --ink:#e5eee2; --muted:#9db2a1; --line:#2b3c30;
+    --leaf:#5db36c; --leaf-ink:#0b1a0f; --leaf-deep:#a9dbb0; --leaf-soft:#1f3526;
+    --grain:#e3b552; --grain-soft:#3a2f17; --bad:#ec8a71; --bad-soft:#3b211b;
+    --hero:#132a1a; --hero-ink:#e5f2e2; --hero-muted:#93b897;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0e1611; --surface:#16211a; --surface-2:#1b281f; --ink:#e5eee2; --muted:#9db2a1; --line:#2b3c30;
+  --leaf:#5db36c; --leaf-ink:#0b1a0f; --leaf-deep:#a9dbb0; --leaf-soft:#1f3526;
+  --grain:#e3b552; --grain-soft:#3a2f17; --bad:#ec8a71; --bad-soft:#3b211b;
+  --hero:#132a1a; --hero-ink:#e5f2e2; --hero-muted:#93b897;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--font-body);font-size:16px;line-height:1.5;-webkit-text-size-adjust:100%}
+h1,h2,h3{font-family:var(--font-display);text-wrap:balance;margin:0;line-height:1.15}
+button,input,select{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--grain);outline-offset:2px}
+
+/* Kepala */
+.hero{background:var(--hero);color:var(--hero-ink);padding:22px 16px 18px}
+.hero-in{max-width:1080px;margin:0 auto;display:flex;gap:14px;align-items:center}
+.logo{flex:none;width:48px;height:48px;border-radius:14px;background:var(--leaf);display:grid;place-items:center}
+.hero h1{font-size:clamp(1.35rem,4.5vw,2rem);font-weight:800;letter-spacing:-.01em}
+.hero p{margin:4px 0 0;color:var(--hero-muted);font-size:.93rem}
+
+/* Tab */
+.tabs-wrap{position:sticky;top:0;z-index:5;background:var(--bg);border-bottom:1px solid var(--line)}
+.tabs{max-width:1080px;margin:0 auto;padding:10px 16px;display:grid;grid-template-columns:repeat(2,1fr);gap:6px}
+.tab{appearance:none;border:1px solid var(--line);background:var(--surface);border-radius:12px;padding:9px 6px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;font-weight:700;font-size:.86rem;line-height:1.2;text-align:center}
+.tab small{font-weight:400;color:var(--muted);font-size:.74rem}
+.tab[aria-selected="true"]{background:var(--leaf);border-color:var(--leaf);color:var(--leaf-ink)}
+.tab[aria-selected="true"] small{color:inherit;opacity:.85}
+.tab:hover{border-color:var(--leaf)}
+
+main{max-width:1080px;margin:0 auto;padding:18px 16px 40px}
+.panel[hidden]{display:none}
+.grid{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,7fr);gap:16px;align-items:start}
+@media (max-width:820px){.grid{grid-template-columns:1fr}}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:18px}
+.stack{display:flex;flex-direction:column;gap:16px}
+.card h2{font-size:1.15rem;font-weight:700;margin-bottom:4px}
+.card .sub{color:var(--muted);font-size:.88rem;margin:0 0 14px}
+.eyebrow{font-size:.74rem;letter-spacing:.06em;text-transform:uppercase;color:var(--leaf);font-weight:700;margin-bottom:4px}
+
+/* Borang */
+.field{display:flex;flex-direction:column;gap:5px;margin-bottom:14px}
+.field[hidden]{display:none}
+label,.lbl{font-weight:700;font-size:.9rem}
+.hint{font-size:.8rem;color:var(--muted)}
+.inp{width:100%;min-height:46px;padding:10px 12px;border:1.5px solid var(--line);border-radius:10px;background:var(--surface-2);font-variant-numeric:tabular-nums}
+.inp:focus{border-color:var(--leaf);outline:none;box-shadow:0 0 0 3px var(--leaf-soft)}
+.inp.err{border-color:var(--bad)}
+.row2{display:grid;grid-template-columns:1fr auto;gap:8px}
+.row2 select{width:auto}
+.seg{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.seg.three{grid-template-columns:repeat(3,1fr)}
+.seg input{position:absolute;opacity:0;pointer-events:none}
+.seg label{border:1.5px solid var(--line);border-radius:10px;padding:9px 8px;cursor:pointer;font-size:.85rem;background:var(--surface-2);display:flex;flex-direction:column;gap:1px;min-height:46px;justify-content:center}
+.seg label span{font-weight:400;color:var(--muted);font-size:.76rem}
+.seg input:checked + label{border-color:var(--leaf);background:var(--leaf-soft);box-shadow:inset 0 0 0 1px var(--leaf)}
+.seg input:focus-visible + label{outline:3px solid var(--grain);outline-offset:2px}
+.note{background:var(--grain-soft);border-left:4px solid var(--grain);border-radius:8px;padding:10px 12px;font-size:.86rem}
+.note b{font-weight:700}
+.errmsg{color:var(--bad);font-size:.88rem;font-weight:700;margin:0}
+
+/* Hasil */
+.tiles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.tile{border:1px solid var(--line);border-radius:12px;padding:12px;background:var(--surface-2)}
+.tile.main{background:var(--leaf);border-color:var(--leaf);color:var(--leaf-ink)}
+.tile .k{font-size:.8rem;font-weight:700;opacity:.85}
+.tile .v{font-family:var(--font-display);font-size:clamp(1.4rem,5vw,1.9rem);font-weight:800;font-variant-numeric:tabular-nums;line-height:1.1;margin-top:4px;overflow-wrap:anywhere}
+.tile .u{font-size:.8rem;opacity:.8}
+.tile.wide{grid-column:1/-1}
+.summary{margin:12px 0 0;font-size:.95rem}
+
+.steps{margin:0;padding:0;list-style:none;counter-reset:s;display:flex;flex-direction:column;gap:6px}
+.steps li{counter-increment:s;display:grid;grid-template-columns:26px 1fr;gap:8px;font-size:.9rem;font-variant-numeric:tabular-nums}
+.steps li::before{content:counter(s);width:22px;height:22px;border-radius:50%;background:var(--leaf-soft);color:var(--leaf-deep);font-weight:700;font-size:.75rem;display:grid;place-items:center;margin-top:1px}
+.formula{font-family:ui-monospace,'Cascadia Mono',Consolas,monospace;font-size:.86rem;background:var(--surface-2);border:1px dashed var(--line);border-radius:8px;padding:8px 10px;margin:0 0 10px;overflow-x:auto;white-space:nowrap}
+
+.diagram{width:100%;height:auto;display:block;background:var(--surface-2);border-radius:12px;border:1px solid var(--line)}
+.legend{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:10px;font-size:.84rem}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.sw{width:12px;height:12px;border-radius:3px;display:inline-block}
+svg .pt{fill:var(--leaf)}
+svg .unit{fill:var(--grain-soft);stroke:var(--grain);stroke-width:1.5;stroke-dasharray:5 3}
+svg .dim{stroke:var(--grain);stroke-width:2.5;stroke-linecap:round}
+svg .dimtxt{fill:var(--ink);font:700 12px var(--font-body)}
+svg .dimbg{fill:var(--surface)}
+
+.bars{display:flex;flex-direction:column;gap:10px}
+.bar-row{display:grid;grid-template-columns:130px 1fr;gap:10px;align-items:center;font-size:.86rem}
+.bar-track{background:var(--leaf-soft);border-radius:8px;height:30px;position:relative;overflow:hidden}
+.bar-fill{height:100%;border-radius:8px;background:var(--leaf);display:flex;align-items:center;justify-content:flex-end;padding-right:8px;color:var(--leaf-ink);font-weight:700;font-variant-numeric:tabular-nums;min-width:fit-content;transition:width .4s ease}
+.bar-fill.alt{background:var(--grain);color:#1d1503}
+.bar-row.cur .lab{font-weight:700}
+@media (max-width:420px){.bar-row{grid-template-columns:96px 1fr}}
+
+.stackbar{display:flex;height:22px;border-radius:8px;overflow:hidden;margin-top:6px}
+.stackbar div{height:100%}
+
+/* Tong */
+.tanks{display:flex;flex-wrap:wrap;gap:6px;align-items:flex-end}
+.tank{width:30px;height:40px}
+.tank .body{fill:var(--surface-2);stroke:var(--muted);stroke-width:1.5}
+.tank .liq{fill:var(--leaf)}
+.tank .liq.part{fill:var(--grain)}
+.tank .cap{fill:var(--muted)}
+.more{font-size:.85rem;color:var(--muted);font-weight:700;padding-bottom:8px}
+
+table.ref{width:100%;border-collapse:collapse;font-size:.88rem;font-variant-numeric:tabular-nums}
+table.ref th,table.ref td{padding:7px 8px;border-bottom:1px solid var(--line);text-align:right}
+table.ref th:first-child,table.ref td:first-child{text-align:left}
+table.ref th{font-size:.78rem;color:var(--muted);font-weight:700}
+table.ref tr.hl td{background:var(--leaf-soft);font-weight:700}
+.tablewrap{overflow-x:auto}
+
+[hidden]{display:none !important}
+.flow{max-width:680px;margin:0 auto;display:flex;flex-direction:column;gap:16px}
+.stepno{display:flex;align-items:center;gap:10px;font-family:var(--font-display);font-weight:700;font-size:1.12rem;line-height:1.2;margin-bottom:8px}
+.stepno b{flex:none;width:30px;height:30px;border-radius:50%;background:var(--leaf);color:var(--leaf-ink);display:grid;place-items:center;font-size:.95rem}
+.stepno em{font-style:normal;font-weight:400;color:var(--muted);font-size:.9rem;font-family:var(--font-body)}
+.labelrow{display:grid;grid-template-columns:minmax(64px,1fr) auto auto minmax(112px,1.4fr);gap:8px;align-items:center}
+.labelrow.two{grid-template-columns:minmax(80px,1fr) auto}
+.labelrow .unit{font-weight:700;font-size:1.05rem}
+.labelrow .word{color:var(--muted);font-size:.9rem}
+.big-inp{font-size:1.25rem;font-weight:700;text-align:center}
+.convert{margin-top:10px;padding:10px 12px;border-radius:10px;background:var(--leaf-soft);font-size:.92rem}
+.convert .hint{margin-left:4px}
+.quick-out .calc{font-family:ui-monospace,Consolas,monospace;font-size:.8rem;color:var(--leaf-deep);margin-top:6px;overflow-wrap:anywhere}
+.share{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
+.share .btn{text-align:center;text-decoration:none;display:flex;align-items:center;justify-content:center;font-size:.9rem}
+.btn.small{min-height:34px;padding:4px 12px;font-size:.82rem;margin-top:4px}
+/* Sukatan pantas */
+.chips{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.chips input{position:absolute;opacity:0;pointer-events:none}
+.chips label{border:1.5px solid var(--line);border-radius:10px;padding:8px 4px;text-align:center;cursor:pointer;background:var(--surface-2);font-weight:700;font-size:.92rem;min-height:46px;display:flex;align-items:center;justify-content:center;font-variant-numeric:tabular-nums}
+.chips label:hover{border-color:var(--leaf)}
+.chips input:checked + label{background:var(--leaf);border-color:var(--leaf);color:var(--leaf-ink)}
+.chips input:focus-visible + label{outline:3px solid var(--grain);outline-offset:2px}
+.quick-out{display:flex;gap:16px;align-items:center;margin-top:14px;padding:14px 16px;border-radius:12px;background:var(--leaf-soft)}
+.quick-out .say{font-size:.95rem}
+.quick-out .big{font-family:var(--font-display);font-size:clamp(2rem,8vw,2.6rem);font-weight:800;color:var(--leaf-deep);line-height:1.05;font-variant-numeric:tabular-nums;margin:2px 0}
+.quick-out .tip{font-size:.83rem;color:var(--muted);margin-top:6px}
+.cyl{flex:none;width:72px;height:auto}
+.cyl .glass{fill:var(--surface);stroke:var(--muted);stroke-width:1.5}
+.cyl .base{fill:var(--muted)}
+.cyl .liq{fill:var(--grain)}
+.cyl .tick{stroke:var(--muted);stroke-width:1}
+.cyl text{fill:var(--muted);font:700 9px var(--font-body)}
+.btn{appearance:none;border:none;border-radius:10px;padding:11px 16px;font-weight:700;cursor:pointer;background:var(--leaf);color:var(--leaf-ink);min-height:44px}
+.btn:hover{filter:brightness(1.07)}
+.btn.ghost{background:transparent;border:1.5px solid var(--leaf);color:var(--leaf)}
+.foot{max-width:1080px;margin:0 auto;padding:0 16px 30px;color:var(--muted);font-size:.8rem}
+@media (prefers-reduced-motion: reduce){*{transition:none !important}}
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="hero-in">
+    <div class="logo" aria-hidden="true">
+      <svg width="30" height="30" viewBox="0 0 30 30"><path d="M15 27V13" stroke="#fff" stroke-width="2.4" stroke-linecap="round"/><path d="M15 15C15 9 10 5 4 5c0 6 5 10 11 10Z" fill="#fff"/><path d="M15 19c0-5 4-9 11-9 0 6-5 9-11 9Z" fill="#e3b552"/></svg>
+    </div>
+    <div>
+      <h1>SmartAgro Planner: Kalkulator &amp; Perancang Ladang Pintar</h1>
+      <p>Alat bantu pengiraan ladang untuk pelajar Diploma Agroindustri Tanaman</p>
+    </div>
+  </div>
+</header>
+
+<nav class="tabs-wrap" aria-label="Menu utama">
+  <div class="tabs" role="tablist">
+    <button class="tab" role="tab" id="tab-jarak" aria-controls="p-jarak" data-hash="kalkulator-jarak">Jarak &amp; Benih<small>Tab 1</small></button>
+    <button class="tab" role="tab" id="tab-bancuhan" aria-controls="p-bancuhan" data-hash="bancuhan">Bancuhan Baja &amp; Racun<small>Tab 2</small></button>
+  </div>
+</nav>
+
+<main>
+<!-- ============ TAB 1 ============ -->
+<section class="panel" id="p-jarak" role="tabpanel" aria-labelledby="tab-jarak">
+  <div class="grid">
+    <div class="card">
+      <div class="eyebrow">Input</div>
+      <h2>Kalkulator Jarak &amp; Benih</h2>
+      <p class="sub">Pilih tanaman untuk mengisi jarak lazim secara automatik, kemudian ubah mengikut keperluan.</p>
+
+      <div class="field">
+        <label for="crop">Jenis tanaman</label>
+        <select id="crop" class="inp">
+          <option value="sawit">Kelapa Sawit</option>
+          <option value="getah">Getah</option>
+          <option value="kopi">Kopi</option>
+          <option value="koko">Koko</option>
+          <option value="nanas">Nanas</option>
+          <option value="padi">Padi</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label for="luas">Keluasan tanah</label>
+        <div class="row2">
+          <input id="luas" class="inp" type="text" inputmode="decimal" value="10" autocomplete="off">
+          <select id="unitLuas" class="inp" aria-label="Unit keluasan">
+            <option value="ha">Hektar</option>
+            <option value="ekar">Ekar</option>
+          </select>
+        </div>
+        <span class="hint">1 ekar = 0.4047 hektar · 1 hektar = 10,000 m²</span>
+      </div>
+
+      <div class="field">
+        <span class="lbl" id="sysLbl">Sistem tanaman</span>
+        <div class="seg" role="radiogroup" aria-labelledby="sysLbl">
+          <input type="radio" name="sys" id="sys-tiga" value="tiga"><label for="sys-tiga">Segi Tiga Sama<span>d² × 0.866</span></label>
+          <input type="radio" name="sys" id="sys-sama" value="sama"><label for="sys-sama">Segi Empat Sama<span>d × d</span></label>
+          <input type="radio" name="sys" id="sys-tepat" value="tepat"><label for="sys-tepat">Segi Empat Tepat<span>a × b (getah)</span></label>
+          <input type="radio" name="sys" id="sys-berkembar" value="berkembar"><label for="sys-berkembar">Baris Berkembar<span>nanas</span></label>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="jarakA" id="lblA">Jarak tanaman, d (m)</label>
+        <input id="jarakA" class="inp" type="text" inputmode="decimal" autocomplete="off">
+      </div>
+      <div class="field" id="fB" hidden>
+        <label for="jarakB" id="lblB">Jarak antara baris, b (m)</label>
+        <input id="jarakB" class="inp" type="text" inputmode="decimal" autocomplete="off">
+      </div>
+      <div class="field" id="fC" hidden>
+        <label for="jarakC" id="lblC">Jarak antara pasangan baris, c (m)</label>
+        <input id="jarakC" class="inp" type="text" inputmode="decimal" autocomplete="off">
+      </div>
+      <div class="field" id="fSeed" hidden>
+        <label for="kadarBenih">Kadar benih tabur terus (kg/ha)</label>
+        <input id="kadarBenih" class="inp" type="text" inputmode="decimal" value="100" autocomplete="off">
+        <span class="hint">Pilihan bagi padi tabur terus. Gunakan kadar yang disyorkan bagi varieti anda.</span>
+      </div>
+
+      <div class="note" id="cropNote"></div>
+    </div>
+
+    <div class="stack">
+      <div class="card" aria-live="polite">
+        <div class="eyebrow">Output</div>
+        <h2 id="resTitle">Keputusan</h2>
+        <p class="errmsg" id="err1" hidden></p>
+        <div class="tiles" id="tiles1"></div>
+        <p class="summary" id="summary1"></p>
+        <div style="margin-top:12px">
+          <div class="hint" style="display:flex;justify-content:space-between"><span>Pecahan anak benih</span><span id="stackLbl"></span></div>
+          <div class="stackbar" id="stack1" aria-hidden="true"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="eyebrow">Visual</div>
+        <h2>Pelan susunan tanaman</h2>
+        <p class="sub">Kawasan berlorek ialah luas yang dikuasai oleh sebatang pokok.</p>
+        <svg id="layout" class="diagram" viewBox="0 0 340 230" role="img" aria-label="Rajah susunan tanaman"></svg>
+        <div class="legend" id="legend1"></div>
+      </div>
+
+      <div class="card" id="cmpCard">
+        <div class="eyebrow">Perbandingan</div>
+        <h2 id="cmpTitle">Segi Tiga Sama lawan Segi Empat Sama</h2>
+        <p class="sub" id="cmpSub"></p>
+        <div class="bars" id="bars1"></div>
+      </div>
+
+      <div class="card">
+        <div class="eyebrow">Jalan kerja</div>
+        <h2>Cara pengiraan</h2>
+        <p class="formula" id="formula1"></p>
+        <ol class="steps" id="steps1"></ol>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ TAB 2 ============ -->
+<section class="panel" id="p-bancuhan" role="tabpanel" aria-labelledby="tab-bancuhan" hidden>
+<div class="flow">
+
+  <div class="card">
+    <div class="stepno"><b>1</b>Salin kadar dari label</div>
+    <p class="sub">Taip nombor tepat seperti yang tertulis pada label produk. Aplikasi akan buat kiraan.</p>
+    <div class="field">
+      <span class="lbl" id="modeLbl">Jenis produk</span>
+      <div class="seg three" role="radiogroup" aria-labelledby="modeLbl">
+        <input type="radio" name="mode" id="m-ml" value="ml" checked><label for="m-ml">Cecair<span>sukat ml</span></label>
+        <input type="radio" name="mode" id="m-gl" value="gl"><label for="m-gl">Serbuk<span>timbang g</span></label>
+        <input type="radio" name="mode" id="m-gp" value="gp"><label for="m-gp">Baja<span>g sepokok</span></label>
+      </div>
+    </div>
+
+    <div class="field" id="fLabel" style="margin-bottom:0">
+      <span class="lbl" id="labelLbl">Label tulis</span>
+      <div class="labelrow" role="group" aria-labelledby="labelLbl">
+        <input id="lblAmt" class="inp big-inp" type="text" inputmode="decimal" value="20" autocomplete="off" aria-label="Sukatan produk pada label">
+        <span class="unit" id="lblUnit">ml</span>
+        <span class="word">setiap</span>
+        <select id="lblBase" class="inp" aria-label="Isipadu air pada label">
+          <option value="1">1 L air</option>
+          <option value="10" selected>10 L air</option>
+          <option value="15">15 L air</option>
+          <option value="16">16 L air</option>
+          <option value="20">20 L air</option>
+          <option value="100">100 L air</option>
+          <option value="lain">Lain-lain</option>
+        </select>
+      </div>
+      <div class="field" id="fBaseLain" hidden style="margin:10px 0 0">
+        <label for="lblBaseLain">Isipadu air pada label (L)</label>
+        <input id="lblBaseLain" class="inp" type="text" inputmode="decimal" value="5" autocomplete="off">
+      </div>
+      <div class="convert" id="convert"></div>
+    </div>
+
+    <div id="fGp" hidden>
+      <div class="field">
+        <label for="gpAmt">Label tulis (gram setiap pokok)</label>
+        <div class="labelrow two">
+          <input id="gpAmt" class="inp big-inp" type="text" inputmode="decimal" value="500" autocomplete="off">
+          <span class="unit">g sepokok</span>
+        </div>
+      </div>
+      <div class="field" style="margin-bottom:0">
+        <span class="lbl" id="caraLbl">Cara aplikasi baja</span>
+        <div class="seg" role="radiogroup" aria-labelledby="caraLbl">
+          <input type="radio" name="cara" id="c-tabur" value="tabur" checked><label for="c-tabur">Tabur butiran<span>tiada air</span></label>
+          <input type="radio" name="cara" id="c-larut" value="larut"><label for="c-larut">Larut &amp; siram<span>guna air</span></label>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" id="quickCard">
+    <div class="stepno"><b>2</b>Berapa liter air dalam tong anda?</div>
+    <div class="chips" role="radiogroup" aria-label="Isipadu air">
+      <input type="radio" name="qv" id="qv1" value="1"><label for="qv1">1 L</label>
+      <input type="radio" name="qv" id="qv5" value="5"><label for="qv5">5 L</label>
+      <input type="radio" name="qv" id="qv10" value="10"><label for="qv10">10 L</label>
+      <input type="radio" name="qv" id="qv15" value="15"><label for="qv15">15 L</label>
+      <input type="radio" name="qv" id="qv16" value="16" checked><label for="qv16">16 L</label>
+      <input type="radio" name="qv" id="qv18" value="18"><label for="qv18">18 L</label>
+      <input type="radio" name="qv" id="qv20" value="20"><label for="qv20">20 L</label>
+      <input type="radio" name="qv" id="qv-lain" value="lain"><label for="qv-lain">Lain-lain</label>
+    </div>
+    <div class="field" id="fQv" hidden style="margin:12px 0 0">
+      <label for="qvLain">Isipadu air lain (L)</label>
+      <input id="qvLain" class="inp" type="text" inputmode="decimal" value="3" autocomplete="off">
+    </div>
+    <div class="quick-out" id="quickOut" aria-live="polite"></div>
+    <div class="share" id="shareRow">
+      <button type="button" class="btn ghost" id="btnCopy">Salin arahan</button>
+      <a class="btn ghost" id="btnWa" href="https://wa.me/" target="_blank" rel="noopener">Hantar ke WhatsApp</a>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="stepno"><b>3</b>Kira untuk seluruh ladang <em>(pilihan)</em></div>
+    <p class="sub" id="tongNote">Isi jika mahu tahu jumlah tong dan jumlah produk untuk semua pokok. Saiz tong ikut pilihan di Langkah 2.</p>
+    <div class="field">
+      <label for="pokok2">Bilangan pokok</label>
+      <input id="pokok2" class="inp" type="text" inputmode="numeric" value="500" autocomplete="off">
+      <span class="hint"><button type="button" id="ambilTab1" class="btn ghost small">Guna jumlah pokok dari Tab 1</button></span>
+    </div>
+    <div class="field" id="fLpp">
+      <label for="lpp">Isipadu larutan sepokok (L)</label>
+      <input id="lpp" class="inp" type="text" inputmode="decimal" value="0.5" autocomplete="off">
+      <span class="hint">Cara ukur: isi 10 L air sahaja, sembur 10 pokok seperti biasa, sukat baki. (10 − baki) ÷ 10 = liter sepokok.</span>
+    </div>
+    <div class="field" id="fBeg" hidden style="margin-bottom:0">
+      <label for="beg">Saiz beg baja</label>
+      <select id="beg" class="inp">
+        <option value="50">50 kg</option>
+        <option value="25">25 kg</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="card" aria-live="polite">
+    <div class="eyebrow">Keputusan seluruh ladang</div>
+    <p class="errmsg" id="err2" hidden></p>
+    <div class="tiles" id="tiles2"></div>
+    <p class="summary" id="summary2"></p>
+    <div id="tankWrap" style="margin-top:14px">
+      <div class="lbl" id="tankTitle"></div>
+      <p class="hint" id="tankSub" style="margin:2px 0 8px"></p>
+      <div class="tanks" id="tanks"></div>
+      <div class="legend">
+        <span><i class="sw" style="background:var(--leaf)"></i>Tong penuh</span>
+        <span><i class="sw" style="background:var(--grain)"></i>Tong terakhir (separa)</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="eyebrow">Jalan kerja</div>
+    <h2>Cara pengiraan</h2>
+    <ol class="steps" id="steps2" style="margin-top:10px"></ol>
+  </div>
+
+  <div class="card">
+    <div class="eyebrow">Rujukan pantas</div>
+    <h2 id="refTitle">Jadual sukatan</h2>
+    <p class="sub" id="refSub"></p>
+    <div class="tablewrap"><table class="ref" id="refTable"></table></div>
+  </div>
+
+  <div class="note"><b>Keselamatan:</b> Sentiasa ikut label produk. Pakai sarung tangan, pelitup muka, cermin mata dan but semasa membancuh. Gunakan silinder penyukat atau penimbang, bukan sudu dapur atau penutup botol.</div>
+</div>
+</section>
+</main>
+
+<p class="foot">Nilai jarak lazim ialah panduan umum. Rujuk saranan terkini agensi berkaitan (MPOB, LGM/RISDA, Jabatan Pertanian, LKM, LPNM, MARDI) dan label produk sebelum pelaksanaan di ladang. Kiraan kepadatan ialah anggaran kasar tanpa tolakan kawasan jalan, parit dan teres.</p>
+
+<script>
+(function(){
+'use strict';
+const $ = s => document.querySelector(s);
+const $$ = s => Array.from(document.querySelectorAll(s));
+const TRI = 0.866;          // sin 60° (√3/2) dibundarkan, seperti dalam nota kursus
+const HA_PER_EKAR = 0.4047;
+
+function NF(n, max, min){
+  if(max === undefined) max = 2;
+  return new Intl.NumberFormat('ms-MY',{maximumFractionDigits:max, minimumFractionDigits:min||0}).format(n);
+}
+function parseNum(str){
+  let s = String(str||'').trim().replace(/\s/g,'');
+  if(!s) return NaN;
+  if(s.includes(',') && s.includes('.')) s = s.replace(/,/g,'');
+  else if(s.includes(',')) s = /^\d{1,3}(,\d{3})+$/.test(s) ? s.replace(/,/g,'') : s.replace(',', '.');
+  if(!/^-?\d*\.?\d+$/.test(s)) return NaN;
+  return parseFloat(s);
+}
+function val(id){ return parseNum(document.getElementById(id).value); }
+function radio(name){ const r = document.querySelector('input[name="'+name+'"]:checked'); return r ? r.value : null; }
+function esc(t){ return String(t).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+/* ---------------- Tab ---------------- */
+const TABS = [['kalkulator-jarak','tab-jarak','p-jarak'],['bancuhan','tab-bancuhan','p-bancuhan']];
+function showTab(hash){
+  const t = TABS.find(x => x[0] === hash) || TABS[0];
+  TABS.forEach(([h,tid,pid]) => {
+    const on = h === t[0];
+    document.getElementById(tid).setAttribute('aria-selected', on ? 'true' : 'false');
+    document.getElementById(tid).tabIndex = on ? 0 : -1;
+    document.getElementById(pid).hidden = !on;
+  });
+}
+$$('.tab').forEach((b,i) => {
+  b.addEventListener('click', () => { const h = b.dataset.hash; if(location.hash !== '#'+h){ location.hash = h; } else showTab(h); });
+  b.addEventListener('keydown', e => {
+    if(e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+    const n = (i + 1) % 2;
+    const nb = $$('.tab')[n]; nb.focus(); nb.click();
+  });
+});
+window.addEventListener('hashchange', () => showTab(location.hash.slice(1)));
+showTab(location.hash.slice(1));
+
+/* ---------------- Data tanaman ---------------- */
+const CROPS = {
+  sawit:{nama:'Kelapa Sawit', unit:'pokok', sys:'tiga', a:9,
+    nota:'<b>Lazim:</b> segi tiga sama 9 m (≈143 pokok/ha). Julat biasa 8.8–9.2 m memberi ≈136–149 pokok/ha.'},
+  getah:{nama:'Getah', unit:'pokok', sys:'tepat', a:3, b:7,
+    nota:'<b>Lazim:</b> 3 m dalam baris × 7 m antara baris (≈476 pokok/ha). Di kawasan berbukit, baris mengikut kontur/teres.'},
+  kopi:{nama:'Kopi', unit:'pokok', sys:'sama', a:3,
+    nota:'<b>Lazim:</b> segi empat sama 3 m × 3 m (≈1,111 pokok/ha). Kopi Liberika kadangkala ditanam lebih jarang.'},
+  koko:{nama:'Koko', unit:'pokok', sys:'sama', a:3,
+    nota:'<b>Lazim:</b> segi empat sama 3 m × 3 m (≈1,111 pokok/ha), bersama tanaman pelindung.'},
+  nanas:{nama:'Nanas', unit:'pokok', sys:'berkembar', a:0.3, b:0.6, c:0.9,
+    nota:'<b>Lazim:</b> baris berkembar 30 cm (dalam baris) × 60 cm (antara 2 baris) × 90 cm (antara pasangan), ≈44,444 pokok/ha.'},
+  padi:{nama:'Padi', unit:'rumpun', sys:'sama', a:0.25,
+    nota:'<b>Lazim (tanam ubah/mesin):</b> 25 cm × 25 cm = 160,000 rumpun/ha. Bagi tabur terus, rujuk kadar benih kg/ha di bawah.'}
+};
+const SYS_NAME = {tiga:'Segi Tiga Sama', sama:'Segi Empat Sama', tepat:'Segi Empat Tepat', berkembar:'Baris Berkembar'};
+let lastTotal = null;
+
+function applyCrop(){
+  const c = CROPS[$('#crop').value];
+  document.getElementById('sys-'+c.sys).checked = true;
+  $('#jarakA').value = c.a;
+  $('#jarakB').value = c.b !== undefined ? c.b : (c.sys==='tepat' ? 7 : 0.6);
+  $('#jarakC').value = c.c !== undefined ? c.c : 0.9;
+  $('#cropNote').innerHTML = c.nota;
+  $('#fSeed').hidden = $('#crop').value !== 'padi';
+  updateFields();
+}
+function updateFields(){
+  const s = radio('sys');
+  const lA = $('#lblA'), lB = $('#lblB'), lC = $('#lblC');
+  if(s === 'sama' || s === 'tiga'){ lA.textContent = 'Jarak tanaman, d (m)'; $('#fB').hidden = true; $('#fC').hidden = true; }
+  else if(s === 'tepat'){ lA.textContent = 'Jarak dalam baris, a (m)'; lB.textContent = 'Jarak antara baris, b (m)'; $('#fB').hidden = false; $('#fC').hidden = true;
+    if(parseNum($('#jarakB').value) < 1) $('#jarakB').value = 7; }
+  else { lA.textContent = 'Jarak dalam baris, a (m)'; lB.textContent = 'Jarak antara 2 baris berkembar, b (m)'; lC.textContent = 'Jarak antara pasangan baris, c (m)'; $('#fB').hidden = false; $('#fC').hidden = false;
+    if(parseNum($('#jarakB').value) > 2) $('#jarakB').value = 0.6; }
+  calc1();
+}
+
+function tile(k, v, u, cls){ return '<div class="tile '+(cls||'')+'"><div class="k">'+k+'</div><div class="v">'+v+'</div><div class="u">'+u+'</div></div>'; }
+
+function calc1(){
+  const cropKey = $('#crop').value, crop = CROPS[cropKey], U = crop.unit;
+  const s = radio('sys');
+  const luasIn = val('luas'), unit = $('#unitLuas').value;
+  const a = val('jarakA'), b = val('jarakB'), c = val('jarakC');
+  const errs = [];
+  $$('#p-jarak .inp').forEach(i => i.classList.remove('err'));
+  const bad = (id, msg) => { document.getElementById(id).classList.add('err'); errs.push(msg); };
+  if(!(luasIn > 0)) bad('luas','Masukkan keluasan yang lebih besar daripada 0.');
+  if(!(a > 0)) bad('jarakA','Masukkan jarak tanaman yang lebih besar daripada 0.');
+  if((s==='tepat'||s==='berkembar') && !(b > 0)) bad('jarakB','Masukkan jarak b yang lebih besar daripada 0.');
+  if(s==='berkembar' && !(c > 0)) bad('jarakC','Masukkan jarak c yang lebih besar daripada 0.');
+  const e1 = $('#err1');
+  if(errs.length){ e1.hidden = false; e1.textContent = errs[0]; return; }
+  e1.hidden = true;
+
+  const ha = unit === 'ekar' ? luasIn * HA_PER_EKAR : luasIn;
+  const steps = [];
+  if(unit === 'ekar') steps.push('Tukar keluasan ke hektar: '+NF(luasIn)+' ekar × 0.4047 = <b>'+NF(ha,3)+' ha</b>');
+  let area, formula;
+  if(s === 'sama'){ area = a*a; formula = 'Pokok/ha = 10,000 ÷ (d × d)';
+    steps.push('Luas sebatang '+U+' = d × d = '+NF(a)+' × '+NF(a)+' = <b>'+NF(area,4)+' m²</b>'); }
+  else if(s === 'tiga'){ area = a*a*TRI; formula = 'Pokok/ha = 10,000 ÷ (d² × 0.866)';
+    steps.push('Luas sebatang '+U+' = d² × 0.866 = '+NF(a)+'² × 0.866 = <b>'+NF(area,2)+' m²</b>'); }
+  else if(s === 'tepat'){ area = a*b; formula = 'Pokok/ha = 10,000 ÷ (a × b)';
+    steps.push('Luas sebatang '+U+' = a × b = '+NF(a)+' × '+NF(b)+' = <b>'+NF(area,4)+' m²</b>'); }
+  else { area = a*(b+c)/2; formula = 'Pokok/ha = (10,000 × 2) ÷ [(b + c) × a]';
+    steps.push('Satu pasangan baris menduduki lebar (b + c) = '+NF(b)+' + '+NF(c)+' = '+NF(b+c)+' m dan memuatkan 2 baris');
+    steps.push('Luas sebatang '+U+' = a × (b + c) ÷ 2 = '+NF(a)+' × '+NF(b+c)+' ÷ 2 = <b>'+NF(area,4)+' m²</b>'); }
+  const pphX = 10000/area, pph = Math.round(pphX);
+  steps.push(cap(U)+'/ha = 10,000 ÷ '+NF(area,4)+' = '+NF(pphX,1)+' ≈ <b>'+NF(pph,0)+' '+U+'/ha</b>');
+  const total = Math.round(pph*ha);
+  steps.push('Jumlah '+U+' = '+NF(pph,0)+' × '+NF(ha,3)+' ha = '+NF(pph*ha,1)+' ≈ <b>'+NF(total,0)+' '+U+'</b>');
+  const sul = Math.ceil(total*0.05);
+  steps.push('Sulaman 5% = '+NF(total,0)+' × 0.05 = '+NF(total*0.05,2)+' → bundar ke atas = <b>'+NF(sul,0)+' anak benih</b>');
+  const benih = total + sul;
+  steps.push('Jumlah anak benih disediakan = '+NF(total,0)+' + '+NF(sul,0)+' = <b>'+NF(benih,0)+'</b>');
+  lastTotal = total;
+
+  let t = tile(cap(U)+' per hektar', NF(pph,0), U+'/ha', 'main')
+        + tile('Jumlah keseluruhan', NF(total,0), U+' bagi '+NF(ha,3)+' ha')
+        + tile('Tambahan sulaman 5%', NF(sul,0), 'anak benih/semaian')
+        + tile('Jumlah anak benih', NF(benih,0), 'untuk ditempah')
+        + tile('Luas sebatang '+U, NF(area, area < 1 ? 4 : 2), 'm² setiap '+U, 'wide');
+  if(cropKey === 'padi'){
+    const kb = val('kadarBenih');
+    if(kb > 0){ t += tile('Benih tabur terus (alternatif)', NF(kb*ha,1), 'kg = '+NF(kb)+' kg/ha × '+NF(ha,3)+' ha', 'wide');
+      steps.push('(Tabur terus) Benih = '+NF(kb)+' kg/ha × '+NF(ha,3)+' ha = <b>'+NF(kb*ha,1)+' kg</b>'); }
+  }
+  $('#tiles1').innerHTML = t;
+  $('#resTitle').textContent = 'Keputusan: '+crop.nama;
+  $('#summary1').innerHTML = 'Ladang <b>'+crop.nama.toLowerCase()+'</b> seluas '+NF(luasIn)+' '+(unit==='ekar'?'ekar':'hektar')+' menggunakan sistem <b>'+SYS_NAME[s].toLowerCase()+'</b> memerlukan <b>'+NF(benih,0)+'</b> anak benih termasuk sulaman.';
+  const pT = total/benih*100;
+  $('#stack1').innerHTML = '<div style="width:'+pT+'%;background:var(--leaf)"></div><div style="width:'+(100-pT)+'%;background:var(--grain)"></div>';
+  $('#stackLbl').innerHTML = '<span style="color:var(--leaf);font-weight:700">■</span> Tanam '+NF(total,0)+' &nbsp; <span style="color:var(--grain);font-weight:700">■</span> Sulaman '+NF(sul,0);
+  $('#formula1').textContent = formula;
+  $('#steps1').innerHTML = steps.map(x => '<li><span>'+x+'</span></li>').join('');
+  drawLayout(s, a, b, c, U);
+  drawCompare(s, a, b, c, pph, U);
+}
+function cap(t){ return t.charAt(0).toUpperCase()+t.slice(1); }
+
+/* Rajah susunan */
+function drawLayout(s, a, b, c, U){
+  const W = 340, H = 230, P = 26;
+  let pts = [], unit = null, dims = [], legend = [];
+  if(s === 'sama'){
+    for(let j=0;j<5;j++) for(let i=0;i<6;i++) pts.push([i*a, j*a]);
+    unit = [[2*a,a],[3*a,a],[3*a,2*a],[2*a,2*a]];
+    dims = [{p:[0,0],q:[a,0],t:'d'},{p:[5*a,0],q:[5*a,a],t:'d'}];
+    legend = ['d = '+NF(a)+' m (antara pokok & antara baris)'];
+  } else if(s === 'tiga'){
+    const h = a*TRI;
+    for(let j=0;j<5;j++) for(let i=0;i<6;i++) pts.push([i*a + (j%2 ? a/2 : 0), j*h]);
+    unit = [[2.5*a,h],[3.5*a,h],[3*a,2*h],[2*a,2*h]];
+    dims = [{p:[0,0],q:[a,0],t:'d'},{p:[0,2*h],q:[a/2,3*h],t:'d'},{p:[5*a,0],q:[5*a,h],t:'h',dash:true}];
+    legend = ['d = '+NF(a)+' m (sisi segi tiga)', 'h = 0.866 × d = '+NF(h,2)+' m (jarak antara baris)'];
+  } else if(s === 'tepat'){
+    const cols = Math.max(4, Math.min(10, Math.round(1.45*3*b/a))) + 1;
+    for(let j=0;j<4;j++) for(let i=0;i<cols;i++) pts.push([i*a, j*b]);
+    const m = Math.floor(cols/2);
+    unit = [[m*a,b],[(m+1)*a,b],[(m+1)*a,2*b],[m*a,2*b]];
+    dims = [{p:[0,0],q:[a,0],t:'a'},{p:[(cols-1)*a,0],q:[(cols-1)*a,b],t:'b'}];
+    legend = ['a = '+NF(a)+' m (dalam baris)', 'b = '+NF(b)+' m (antara baris)'];
+  } else {
+    const ext = 2*(b+c)+b;
+    const cols = Math.max(5, Math.min(14, Math.round(1.45*ext/a))) + 1;
+    for(let k=0;k<3;k++) for(let i=0;i<cols;i++){ pts.push([i*a, k*(b+c)]); pts.push([i*a, k*(b+c)+b]); }
+    const m = Math.floor(cols/2);
+    unit = [[m*a,(b+c)],[(m+1)*a,(b+c)],[(m+1)*a,(b+c)+(b+c)/2],[m*a,(b+c)+(b+c)/2]];
+    dims = [{p:[0,0],q:[a,0],t:'a'},{p:[(cols-1)*a,0],q:[(cols-1)*a,b],t:'b'},{p:[(cols-1)*a,b],q:[(cols-1)*a,b+c],t:'c'}];
+    legend = ['a = '+NF(a)+' m (dalam baris)', 'b = '+NF(b)+' m (antara 2 baris)', 'c = '+NF(c)+' m (antara pasangan)'];
+  }
+  const xs = pts.map(p=>p[0]), ys = pts.map(p=>p[1]);
+  const minX = Math.min(...xs), maxX = Math.max(...xs), minY = Math.min(...ys), maxY = Math.max(...ys);
+  const sc = Math.min((W-2*P)/((maxX-minX)||1), (H-2*P)/((maxY-minY)||1));
+  const ox = (W - (maxX-minX)*sc)/2 - minX*sc, oy = (H - (maxY-minY)*sc)/2 - minY*sc;
+  const X = x => ox + x*sc, Y = y => oy + y*sc;
+  const r = Math.max(3, Math.min(8, a*sc*0.2));
+  let svg = '';
+  if(unit) svg += '<polygon class="unit" points="'+unit.map(p=>X(p[0]).toFixed(1)+','+Y(p[1]).toFixed(1)).join(' ')+'"/>';
+  svg += pts.map(p => '<circle class="pt" cx="'+X(p[0]).toFixed(1)+'" cy="'+Y(p[1]).toFixed(1)+'" r="'+r.toFixed(1)+'"/>').join('');
+  dims.forEach(d => {
+    const x1=X(d.p[0]), y1=Y(d.p[1]), x2=X(d.q[0]), y2=Y(d.q[1]);
+    svg += '<line class="dim" x1="'+x1+'" y1="'+y1+'" x2="'+x2+'" y2="'+y2+'"'+(d.dash?' stroke-dasharray="4 3"':'')+'/>';
+    const mx=(x1+x2)/2, my=(y1+y2)/2, vertical = Math.abs(x2-x1) < 2;
+    const tx = vertical ? mx + 12 : mx, ty = vertical ? my + 4 : my - 9;
+    svg += '<rect class="dimbg" x="'+(tx-7)+'" y="'+(ty-11)+'" width="14" height="15" rx="3"/><text class="dimtxt" x="'+tx+'" y="'+ty+'" text-anchor="middle">'+d.t+'</text>';
+  });
+  $('#layout').innerHTML = svg;
+  $('#layout').setAttribute('aria-label','Rajah susunan '+SYS_NAME[s]);
+  $('#legend1').innerHTML = '<span><i class="sw" style="background:var(--leaf);border-radius:50%"></i>'+cap(U)+'</span>'
+    + '<span><i class="sw" style="background:var(--grain-soft);border:1.5px dashed var(--grain)"></i>Luas sebatang '+U+'</span>'
+    + legend.map(t => '<span><i class="sw" style="background:var(--grain);height:3px"></i>'+t+'</span>').join('');
+}
+
+/* Perbandingan */
+function drawCompare(s, a, b, c, pph, U){
+  let rows, sub;
+  if(s === 'sama' || s === 'tiga'){
+    const sq = Math.round(10000/(a*a)), tr = Math.round(10000/(a*a*TRI));
+    rows = [['Segi Tiga Sama', tr, s==='tiga'], ['Segi Empat Sama', sq, s==='sama']];
+    $('#cmpTitle').textContent = 'Segi Tiga Sama lawan Segi Empat Sama';
+    sub = 'Pada jarak yang sama (d = '+NF(a)+' m), sistem segi tiga sama memuatkan <b>'+NF((tr/sq-1)*100,1)+'% lebih banyak</b> '+U+' sehektar kerana setiap '+U+' hanya menggunakan 86.6% luas.';
+  } else if(s === 'tepat'){
+    const sqEq = Math.round(10000/(a*a));
+    const dEq = Math.sqrt(a*b);
+    rows = [['Segi Empat Tepat '+NF(a)+'×'+NF(b)+' m', pph, true], ['Segi Tiga Sama d = '+NF(dEq,2)+' m', Math.round(10000/(dEq*dEq*TRI)), false]];
+    $('#cmpTitle').textContent = 'Segi Empat Tepat lawan Segi Tiga Sama';
+    sub = 'Perbandingan dengan sistem segi tiga sama yang jaraknya d = √(a × b) = '+NF(dEq,2)+' m. Sistem segi empat tepat memudahkan laluan jentera dan penorehan di antara baris.';
+  } else {
+    const single = Math.round(10000/(a*((b+c)/2)));
+    const sqS = Math.round(10000/(a*c));
+    rows = [['Baris Berkembar', pph, true], ['Baris tunggal a × c', sqS, false]];
+    $('#cmpTitle').textContent = 'Baris Berkembar lawan Baris Tunggal';
+    sub = 'Baris tunggal dengan jarak antara baris c = '+NF(c)+' m. Baris berkembar memuatkan lebih banyak pokok sambil mengekalkan laluan kerja selebar c.';
+  }
+  const mx = Math.max(...rows.map(r=>r[1]));
+  $('#cmpSub').innerHTML = sub;
+  $('#bars1').innerHTML = rows.map((r,i) => '<div class="bar-row'+(r[2]?' cur':'')+'"><span class="lab">'+esc(r[0])+(r[2]?' (dipilih)':'')+'</span><div class="bar-track"><div class="bar-fill'+(i? ' alt':'')+'" style="width:'+(r[1]/mx*100).toFixed(1)+'%">'+NF(r[1],0)+'</div></div></div>').join('')
+    + '<div class="hint">'+cap(U)+' sehektar</div>';
+}
+
+$('#crop').addEventListener('change', applyCrop);
+$$('input[name="sys"]').forEach(r => r.addEventListener('change', updateFields));
+['luas','jarakA','jarakB','jarakC','kadarBenih'].forEach(id => document.getElementById(id).addEventListener('input', calc1));
+$('#unitLuas').addEventListener('change', calc1);
+
+/* ---------------- Tab 2 ---------------- */
+let shareText = '';
+function rateInfo(){
+  const m = radio('mode');
+  if(m === 'gp') return {gp:true, k:val('gpAmt'), u:'g'};
+  const bs = $('#lblBase').value;
+  const amt = val('lblAmt'), base = bs === 'lain' ? val('lblBaseLain') : parseFloat(bs);
+  return {gp:false, amt, base, k:amt/base, u: m === 'ml' ? 'ml' : 'g'};
+}
+function tankVol(){ const q = radio('qv'); return q === 'lain' ? val('qvLain') : parseFloat(q); }
+
+function updateMode(){
+  const m = radio('mode'), cara = radio('cara');
+  const gp = m === 'gp', tabur = gp && cara === 'tabur';
+  $('#fLabel').hidden = gp; $('#fGp').hidden = !gp;
+  $('#lblUnit').textContent = m === 'gl' ? 'g' : 'ml';
+  $('#fBaseLain').hidden = $('#lblBase').value !== 'lain';
+  $('#quickCard').hidden = tabur;
+  $('#fLpp').hidden = tabur; $('#fBeg').hidden = !tabur; $('#tankWrap').hidden = tabur;
+  $('#tongNote').textContent = tabur ? 'Isi bilangan pokok untuk mengira jumlah baja dan bilangan beg.'
+    : 'Isi jika mahu tahu jumlah tong dan jumlah produk untuk semua pokok. Saiz tong ikut pilihan di Langkah 2.';
+  calc2();
+}
+
+/* Silinder penyukat */
+const CYL = [10,25,50,100,250,500,1000];
+function cylSVG(amt){
+  const size = CYL.find(s => s >= amt) || 1000;
+  const frac = Math.min(amt/size, 1), top = 14, bot = 150, h = (bot-top)*frac;
+  let t = '';
+  [0.25,0.5,0.75,1].forEach(f => { const y = bot-(bot-top)*f; t += '<line class="tick" x1="18" x2="'+(f===0.5||f===1?30:25)+'" y1="'+y+'" y2="'+y+'"/>'; });
+  return '<svg class="cyl" viewBox="0 0 76 166" aria-hidden="true">'
+    + '<rect class="glass" x="16" y="6" width="32" height="146" rx="3"/>'
+    + (h>0 ? '<rect class="liq" x="18" y="'+(bot-h).toFixed(1)+'" width="28" height="'+h.toFixed(1)+'" rx="1.5"/>' : '')
+    + t + '<rect class="base" x="8" y="152" width="48" height="7" rx="2"/>'
+    + '<text x="51" y="'+(top+3)+'">'+size+'</text><text x="51" y="'+((top+bot)/2+3)+'">'+NF(size/2,1)+'</text><text x="32" y="166" text-anchor="middle">ml</text></svg>';
+}
+function toolTip(amt, u){
+  if(u === 'g') return 'Timbang dengan penimbang digital. Bancuh serbuk menjadi pes dengan sedikit air dahulu.';
+  if(amt < 5) return 'Jumlah kecil: gunakan picagari bersukat 5 ml atau 10 ml.';
+  if(amt <= 1000) return 'Gunakan silinder penyukat '+NF(CYL.find(s => s >= amt),0)+' ml.';
+  return 'Melebihi 1 L: sukat '+NF(Math.ceil(amt/1000),0)+' kali dengan silinder 1,000 ml.';
+}
+function setShare(on){
+  $('#shareRow').hidden = !on;
+  if(on) $('#btnWa').href = 'https://wa.me/?text='+encodeURIComponent(shareText);
+  $('#btnCopy').textContent = 'Salin arahan';
+}
+
+function convertLine(ri){
+  const c = $('#convert');
+  if(ri.gp) return;
+  if(!(ri.amt > 0) || !(ri.base > 0)){ c.innerHTML = '<span class="errmsg">Masukkan nombor sukatan dan isipadu air pada label.</span>'; return; }
+  c.innerHTML = 'Bermaksud <b>'+NF(ri.k,3)+' '+ri.u+'</b> bagi setiap <b>1 L</b> air'
+    + (ri.base !== 1 ? ' <span class="hint">('+NF(ri.amt)+' ÷ '+NF(ri.base)+')</span>' : '');
+}
+
+function calcQuick(ri){
+  const out = $('#quickOut');
+  $('#fQv').hidden = radio('qv') !== 'lain';
+  const V = tankVol(), L = val('lpp');
+  $('#qvLain').classList.toggle('err', radio('qv') === 'lain' && !(V > 0));
+  if(!(V > 0)){ out.innerHTML = '<p class="errmsg">Masukkan isipadu air yang lebih besar daripada 0.</p>'; setShare(false); return; }
+  if(!(ri.k > 0) || !isFinite(ri.k)){ out.innerHTML = '<p class="errmsg">Lengkapkan Langkah 1 dahulu.</p>'; setShare(false); return; }
+  const mixTip = 'Isi separuh air, masukkan produk, kacau, kemudian tambah air hingga '+NF(V,2)+' L.';
+  if(!ri.gp){
+    const amt = ri.k*V, u = ri.u, verb = u === 'ml' ? 'Sukat' : 'Timbang';
+    const pk = L > 0 ? Math.floor(V/L + 1e-9) : null;
+    out.innerHTML = (u === 'ml' ? cylSVG(amt) : '')
+      + '<div><div class="say">'+verb+'</div>'
+      + '<div class="big">'+NF(amt,2)+' '+u+'</div>'
+      + '<div class="say">untuk <b>'+NF(V,2)+' L</b> air</div>'
+      + '<div class="calc">'+NF(ri.amt)+' '+u+' ÷ '+NF(ri.base)+' L × '+NF(V,2)+' L = '+NF(amt,2)+' '+u+'</div>'
+      + '<div class="tip">'+toolTip(amt,u)+' '+mixTip+(pk !== null && pk > 0 ? ' Cukup untuk '+NF(pk,0)+' pokok ('+NF(L)+' L sepokok).' : '')+'</div></div>';
+    shareText = 'SmartAgro: '+verb+' '+NF(amt,2)+' '+u+' produk untuk '+NF(V,2)+' L air (label: '+NF(ri.amt)+' '+u+' setiap '+NF(ri.base)+' L). '+mixTip;
+  } else {
+    if(!(L > 0)){ out.innerHTML = '<p class="errmsg">Isi "Isipadu larutan sepokok" di Langkah 3 dahulu.</p>'; setShare(false); return; }
+    const conc = ri.k/L, amt = conc*V, pk = Math.floor(V/L + 1e-9);
+    out.innerHTML = '<div><div class="say">Larutkan</div><div class="big">'+NF(amt,1)+' g</div>'
+      + '<div class="say">baja dalam <b>'+NF(V,2)+' L</b> air</div>'
+      + '<div class="calc">'+NF(ri.k)+' g ÷ '+NF(L)+' L × '+NF(V,2)+' L = '+NF(amt,1)+' g</div>'
+      + '<div class="tip">Siram '+NF(L)+' L sepokok. Cukup untuk '+NF(pk,0)+' pokok. Kacau sehingga baja larut sepenuhnya.</div></div>';
+    shareText = 'SmartAgro: Larutkan '+NF(amt,1)+' g baja dalam '+NF(V,2)+' L air. Siram '+NF(L)+' L sepokok ('+NF(ri.k)+' g sepokok), cukup untuk '+NF(pk,0)+' pokok.';
+  }
+  setShare(true);
+}
+
+function tankSVG(frac){
+  const h = 30*frac;
+  return '<svg class="tank" viewBox="0 0 30 40" aria-hidden="true"><rect class="cap" x="10" y="0" width="10" height="5" rx="1.5"/><rect class="body" x="2" y="5" width="26" height="34" rx="5"/>'
+    + (frac>0 ? '<rect class="liq'+(frac<1?' part':'')+'" x="4" y="'+(37-h).toFixed(1)+'" width="22" height="'+h.toFixed(1)+'" rx="3"/>' : '') + '</svg>';
+}
+
+function calc2(){
+  const m = radio('mode'), cara = radio('cara');
+  const ri = rateInfo();
+  convertLine(ri);
+  const tabur = m === 'gp' && cara === 'tabur';
+  if(!tabur) calcQuick(ri);
+  const k = ri.k, N = val('pokok2'), L = val('lpp'), T = tankVol(), beg = parseFloat($('#beg').value);
+  const errs = [];
+  $$('#p-bancuhan .inp').forEach(i => { if(i.id !== 'qvLain') i.classList.remove('err'); });
+  const bad = (id,msg) => { document.getElementById(id).classList.add('err'); errs.push(msg); };
+  if(!ri.gp){
+    if(!(ri.amt > 0)) bad('lblAmt','Masukkan sukatan produk pada label (Langkah 1).');
+    if(!(ri.base > 0)) bad('lblBaseLain','Masukkan isipadu air pada label (Langkah 1).');
+  } else if(!(k > 0)) bad('gpAmt','Masukkan gram sepokok pada label (Langkah 1).');
+  if(!tabur && !(T > 0)) errs.push('Pilih isipadu air tong di Langkah 2.');
+  if(!(N > 0) || !Number.isInteger(N)) bad('pokok2','Bilangan pokok mestilah nombor bulat positif.');
+  if(!tabur && !(L > 0)) bad('lpp','Masukkan isipadu larutan sepokok yang lebih besar daripada 0.');
+  if(!tabur && L > T) bad('lpp','Isipadu sepokok ('+NF(L)+' L) tidak boleh melebihi saiz tong ('+NF(T)+' L).');
+  const e2 = $('#err2');
+  if(errs.length){ e2.hidden = false; e2.textContent = errs[0]; $('#tiles2').innerHTML=''; $('#summary2').innerHTML=''; $('#steps2').innerHTML=''; $('#tanks').innerHTML=''; return; }
+  e2.hidden = true;
+  const steps = [];
+  let tiles = '', summary = '', tanks = null;
+  const u = ri.u;
+
+  if(!ri.gp){
+    const perTong = k*T, vol = N*L;
+    const full = Math.floor(vol/T + 1e-9);
+    const rem = +(vol - full*T).toFixed(4);
+    const nT = rem > 0 ? full+1 : full;
+    const totalB = k*vol, ppt = Math.floor(T/L + 1e-9);
+    if(ri.base !== 1) steps.push('Kadar sebenar = '+NF(ri.amt)+' '+u+' ÷ '+NF(ri.base)+' L = <b>'+NF(k,3)+' '+u+'/L</b>');
+    steps.push('Bahan per tong = '+NF(k,3)+' '+u+'/L × '+NF(T)+' L = <b>'+NF(perTong,2)+' '+u+'</b>');
+    steps.push('Jumlah larutan = '+NF(N,0)+' pokok × '+NF(L)+' L = <b>'+NF(vol,2)+' L</b>');
+    steps.push('Bilangan tong = '+NF(vol,2)+' ÷ '+NF(T)+' = '+NF(vol/T,2)+' → bundar ke atas = <b>'+NF(nT,0)+' tong</b>');
+    if(rem > 0) steps.push('Tong terakhir: '+NF(vol,2)+' − ('+full+' × '+NF(T)+') = '+NF(rem,2)+' L air + '+NF(rem*k,2)+' '+u+' bahan');
+    steps.push('Jumlah bahan = '+NF(k,3)+' × '+NF(vol,2)+' L = <b>'+NF(totalB,2)+' '+u+'</b>'+(totalB>=1000 ? ' ('+NF(totalB/1000,3)+(u==='ml'?' L':' kg')+')' : ''));
+    steps.push('Satu tong cukup untuk '+NF(T)+' ÷ '+NF(L)+' = <b>'+NF(ppt,0)+' pokok</b>');
+    tiles = tile('Bilangan tong '+NF(T)+' L', NF(nT,0), rem>0 ? full+' penuh + 1 separa ('+NF(rem,2)+' L)' : 'semua tong penuh', 'main')
+      + tile('Jumlah produk dibeli', totalB>=1000 ? NF(totalB/1000,3) : NF(totalB,2), totalB>=1000 ? (u==='ml'?'liter':'kg') : u)
+      + tile('Jumlah larutan', NF(vol,2), 'liter')
+      + tile('Pokok setiap tong', NF(ppt,0), 'pokok');
+    summary = 'Untuk '+NF(N,0)+' pokok, bancuh <b>'+NF(nT,0)+' tong</b>. Setiap tong penuh perlukan <b>'+NF(perTong,2)+' '+u+'</b>.';
+    tanks = {n:nT, last: rem>0 ? rem/T : 1};
+    $('#refTitle').textContent = 'Sukatan mengikut isipadu air';
+    $('#refSub').textContent = 'Label: '+NF(ri.amt)+' '+u+' setiap '+NF(ri.base)+' L air. Baris berwarna ialah isipadu yang dipilih.';
+    const sizes = [1,5,10,15,16,18,20,T].filter((v,i,a)=>a.indexOf(v)===i).sort((x,y)=>x-y);
+    $('#refTable').innerHTML = '<thead><tr><th>Isipadu air</th><th>Produk ('+u+')</th></tr></thead><tbody>'
+      + sizes.map(v => '<tr'+(v===T?' class="hl"':'')+'><td>'+NF(v)+' L</td><td>'+NF(k*v,2)+'</td></tr>').join('') + '</tbody>';
+  } else if(tabur){
+    const g = k*N, kg = g/1000, nb = Math.ceil(kg/beg - 1e-9);
+    steps.push('Jumlah baja = '+NF(k)+' g × '+NF(N,0)+' pokok = <b>'+NF(g,0)+' g</b>');
+    steps.push('Tukar ke kg: '+NF(g,0)+' ÷ 1,000 = <b>'+NF(kg,2)+' kg</b>');
+    steps.push('Bilangan beg = '+NF(kg,2)+' ÷ '+beg+' kg = '+NF(kg/beg,2)+' → bundar ke atas = <b>'+NF(nb,0)+' beg</b>');
+    tiles = tile('Jumlah baja', NF(kg,2), 'kg', 'main')
+      + tile('Bilangan beg '+beg+' kg', NF(nb,0), 'beg (bundar ke atas)')
+      + tile('Timbang sepokok', NF(k), 'g/pokok', 'wide');
+    summary = 'Tabur <b>'+NF(k)+' g</b> sepokok. Sediakan <b>'+NF(kg,2)+' kg</b> baja ('+NF(nb,0)+' beg '+beg+' kg) untuk '+NF(N,0)+' pokok.';
+    $('#refTitle').textContent = 'Jumlah baja mengikut bilangan pokok';
+    $('#refSub').textContent = 'Kadar '+NF(k)+' g sepokok.';
+    const ns = [1,10,50,100,500,N].filter((v,i,a)=>a.indexOf(v)===i).sort((x,y)=>x-y);
+    $('#refTable').innerHTML = '<thead><tr><th>Bilangan pokok</th><th>Baja (kg)</th><th>Beg '+beg+' kg</th></tr></thead><tbody>'
+      + ns.map(v => '<tr'+(v===N?' class="hl"':'')+'><td>'+NF(v,0)+'</td><td>'+NF(k*v/1000,2)+'</td><td>'+NF(Math.ceil(k*v/1000/beg - 1e-9),0)+'</td></tr>').join('') + '</tbody>';
+  } else {
+    const ppt = Math.floor(T/L + 1e-9), perTong = ppt*k, nT = Math.ceil(N/ppt), lastP = N - (nT-1)*ppt, g = k*N;
+    steps.push('Pokok setiap tong = '+NF(T)+' L ÷ '+NF(L)+' L = <b>'+NF(ppt,0)+' pokok</b>');
+    steps.push('Baja setiap tong = '+NF(ppt,0)+' pokok × '+NF(k)+' g = <b>'+NF(perTong,1)+' g</b> dalam '+NF(ppt*L,2)+' L air');
+    steps.push('Bilangan tong = '+NF(N,0)+' ÷ '+NF(ppt,0)+' = '+NF(N/ppt,2)+' → bundar ke atas = <b>'+NF(nT,0)+' tong</b>');
+    if(lastP < ppt) steps.push('Tong terakhir untuk '+NF(lastP,0)+' pokok: '+NF(lastP*L,2)+' L air + '+NF(lastP*k,1)+' g baja');
+    steps.push('Jumlah baja = '+NF(k)+' g × '+NF(N,0)+' = '+NF(g,0)+' g = <b>'+NF(g/1000,2)+' kg</b>');
+    tiles = tile('Bilangan tong '+NF(T)+' L', NF(nT,0), lastP<ppt ? (nT-1)+' penuh + 1 separa' : 'semua tong penuh', 'main')
+      + tile('Jumlah baja', NF(g/1000,2), 'kg')
+      + tile('Baja setiap tong', NF(perTong,1), 'g untuk '+NF(ppt,0)+' pokok')
+      + tile('Siram sepokok', NF(L), 'L larutan');
+    summary = 'Untuk '+NF(N,0)+' pokok, bancuh <b>'+NF(nT,0)+' tong</b>. Setiap tong: <b>'+NF(perTong,1)+' g</b> baja dalam '+NF(ppt*L,2)+' L air.';
+    tanks = {n:nT, last: lastP<ppt ? (lastP*L)/T : (ppt*L)/T, fullFrac:(ppt*L)/T};
+    $('#refTitle').textContent = 'Baja mengikut bilangan pokok';
+    $('#refSub').textContent = NF(k)+' g sepokok, '+NF(L)+' L larutan sepokok.';
+    const ns = [1,10,ppt,100,N].filter((v,i,a)=>a.indexOf(v)===i).sort((x,y)=>x-y);
+    $('#refTable').innerHTML = '<thead><tr><th>Bilangan pokok</th><th>Baja (g)</th><th>Air (L)</th></tr></thead><tbody>'
+      + ns.map(v => '<tr'+(v===ppt?' class="hl"':'')+'><td>'+NF(v,0)+(v===ppt?' (1 tong)':'')+'</td><td>'+NF(k*v,1)+'</td><td>'+NF(L*v,2)+'</td></tr>').join('') + '</tbody>';
+  }
+  $('#tiles2').innerHTML = tiles;
+  $('#summary2').innerHTML = summary;
+  $('#steps2').innerHTML = steps.map(x => '<li><span>'+x+'</span></li>').join('');
+  if(tanks){
+    const MAX = 30, show = Math.min(tanks.n, MAX);
+    let h = '';
+    for(let i=0;i<show;i++){
+      const isLast = i === tanks.n-1;
+      h += tankSVG(isLast && tanks.last < (tanks.fullFrac||1) - 1e-9 ? tanks.last : 1);
+    }
+    if(tanks.n > MAX) h += '<span class="more">+'+NF(tanks.n-MAX,0)+' tong lagi</span>';
+    $('#tanks').innerHTML = h;
+    $('#tankTitle').textContent = NF(tanks.n,0)+' tong diperlukan';
+    $('#tankSub').textContent = 'Setiap ikon mewakili satu tong '+NF(T)+' L.';
+  }
+}
+$$('input[name="mode"],input[name="cara"]').forEach(r => r.addEventListener('change', updateMode));
+$('#lblBase').addEventListener('change', updateMode);
+$$('input[name="qv"]').forEach(r => r.addEventListener('change', calc2));
+['lblAmt','lblBaseLain','gpAmt','qvLain','pokok2','lpp'].forEach(id => document.getElementById(id).addEventListener('input', calc2));
+$('#beg').addEventListener('change', calc2);
+$('#ambilTab1').addEventListener('click', () => { if(lastTotal){ $('#pokok2').value = lastTotal; calc2(); } });
+$('#btnCopy').addEventListener('click', () => {
+  const b = $('#btnCopy');
+  try {
+    navigator.clipboard.writeText(shareText).then(() => { b.textContent = 'Disalin ✓'; }, () => { b.textContent = 'Tidak dapat menyalin'; });
+  } catch(e){ b.textContent = 'Tidak dapat menyalin'; }
+});
+
+/* Mula */
+applyCrop();
+updateMode();
+})();
+</script>
+</body>
+</html>
